@@ -23,47 +23,16 @@ from popper import Popper
 
 MODEL = "google/gemini-3-flash-preview"
 
-DATA_GUIDELINES = """
-### How to prepare your data
+HOW_TO_USE = """
+### Как пользоваться
 
-| Requirement | Details |
-|---|---|
-| **Format** | CSV files (comma or tab separated) |
-| **Columns** | Use clear, descriptive English names (e.g. `education_years`, `annual_income_usd`) |
-| **Rows** | At least 30+ rows for reliable statistical testing |
-| **Data types** | Numbers and text — both work |
-| **Multiple files** | You can upload several CSVs — each becomes a separate table |
-| **Naming** | File name becomes table name: `my_data.csv` → `df_my_data` |
+1. **Загрузите данные** — один или несколько CSV-файлов (разделитель — запятая или табуляция, минимум 30 строк)
+2. **Напишите гипотезу** — утверждение, которое вы хотите проверить на ваших данных
+3. **Выберите домен** — область исследования (социология, экономика и т.д.)
+4. **Нажмите «Проверить»** — AI-агент разработает статистические тесты, выполнит их и вынесет вердикт
 
-### Example
-
-| respondent_id | education_years | annual_income_usd | gender | age |
-|---|---|---|---|---|
-| 1 | 14 | 71323 | male | 46 |
-| 2 | 18 | 89500 | female | 32 |
-| ... | ... | ... | ... | ... |
-
-**Hypothesis example:** *"Higher levels of formal education are associated with significantly higher annual income."*
+**Пример гипотезы:** *«Мужчины оценивают честность значимо ниже, чем женщины»*
 """
-
-
-def preview_files(files):
-    """Show preview of uploaded CSV files."""
-    if not files:
-        return "No files uploaded yet."
-
-    parts = []
-    for f in files:
-        fname = os.path.basename(f)
-        try:
-            df = pd.read_csv(f, nrows=5)
-            table_name = f"df_{os.path.splitext(fname)[0]}"
-            header = f"**{fname}** → `{table_name}` ({pd.read_csv(f).shape[0]} rows, {df.shape[1]} columns)\n"
-            parts.append(header + df.to_markdown(index=False))
-        except Exception as e:
-            parts.append(f"**{fname}** — error: {e}")
-
-    return "\n\n---\n\n".join(parts)
 
 
 async def validate_hypothesis(
@@ -76,15 +45,15 @@ async def validate_hypothesis(
 ):
     """Run POPPER validation and stream agent logs."""
     if not files:
-        yield [], "Upload at least one CSV file."
+        yield [], "Загрузите хотя бы один CSV-файл."
         return
     if not hypothesis.strip():
-        yield [], "Enter a hypothesis."
+        yield [], "Введите гипотезу."
         return
 
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
-        yield [], "Set OPENROUTER_API_KEY in .env file."
+        yield [], "Не задан OPENROUTER_API_KEY. Обратитесь к администратору."
         return
 
     # Copy uploaded files to a temp directory
@@ -155,55 +124,56 @@ async def validate_hypothesis(
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-with gr.Blocks(title="POPPER — Hypothesis Validator") as demo:
-    gr.Markdown("# POPPER — Hypothesis Validator")
-    gr.Markdown("Upload your data, enter a hypothesis, and let the AI agent test it using statistical falsification.")
+with gr.Blocks(title="POPPER — Проверка гипотез") as demo:
+    gr.Markdown("# POPPER — Проверка гипотез")
+    gr.Markdown("Загрузите данные, введите гипотезу — AI-агент проверит её методом статистической фальсификации.")
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown(DATA_GUIDELINES)
+            gr.Markdown(HOW_TO_USE)
 
             files_input = gr.File(
-                label="Upload CSV files",
+                label="Загрузите CSV-файлы",
                 file_count="multiple",
                 file_types=[".csv"],
             )
-            file_preview = gr.Markdown("No files uploaded yet.")
 
             hypothesis_input = gr.Textbox(
-                label="Hypothesis",
-                placeholder="e.g. Higher education is associated with higher income...",
+                label="Гипотеза",
+                placeholder="Например: Мужчины оценивают честность значимо ниже, чем женщины...",
                 lines=3,
             )
 
             domain_input = gr.Dropdown(
                 choices=["sociology", "biology", "economics", "psychology", "political science", "education", "public health"],
                 value="sociology",
-                label="Domain",
+                label="Домен (область исследования)",
             )
 
             with gr.Row():
                 alpha_input = gr.Slider(
                     minimum=0.01, maximum=0.2, value=0.1, step=0.01,
-                    label="Significance level (alpha)",
+                    label="Уровень значимости (alpha)",
+                    info="Порог ошибки: 0.05 — строгий, 0.1 — стандартный, 0.2 — мягкий",
                 )
                 max_tests_input = gr.Slider(
                     minimum=1, maximum=10, value=3, step=1,
-                    label="Max falsification tests",
+                    label="Кол-во тестов",
+                    info="Сколько статистических тестов проведёт агент (больше = надёжнее, но дольше)",
                 )
 
-            validate_btn = gr.Button("Validate", variant="primary", size="lg")
+            validate_btn = gr.Button("Проверить", variant="primary", size="lg")
 
         with gr.Column(scale=1):
-            verdict_output = gr.Markdown("", label="Verdict")
-            agent_log = gr.Chatbot(
-                label="Agent Log",
-                height=500,
-            )
+            verdict_output = gr.Markdown("", label="Вердикт")
+
+    # Agent Log — внизу, на всю ширину
+    agent_log = gr.Chatbot(
+        label="Лог агента (подробности работы)",
+        height=500,
+    )
 
     # Events
-    files_input.change(preview_files, inputs=[files_input], outputs=[file_preview])
-
     validate_btn.click(
         validate_hypothesis,
         inputs=[hypothesis_input, files_input, alpha_input, max_tests_input, domain_input],
