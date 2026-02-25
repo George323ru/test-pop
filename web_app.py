@@ -213,4 +213,5 @@ with gr.Blocks(title="POPPER — Hypothesis Validator") as demo:
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
+    demo.queue(max_size=5)
     demo.launch(server_name="0.0.0.0", server_port=port, share=False)
