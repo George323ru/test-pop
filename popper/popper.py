@@ -41,11 +41,12 @@ class Popper:
             os.makedirs(data_path)
 
         self.data_path = data_path
-        if not os.path.exists(os.path.join(data_path, 'bio_database')):
-            print('It will take a few minutes to download the data for the first time...')
-            self.download_all_data()
-        else:
-            print('Data already exists, loading...')
+        if loader_type in ('bio', 'bio_selected'):
+            if not os.path.exists(os.path.join(data_path, 'bio_database')):
+                print('It will take a few minutes to download the data for the first time...')
+                self.download_all_data()
+            else:
+                print('Data already exists, loading...')
 
         if loader_type == 'bio':
             self.data_loader = ExperimentalDataLoader(
@@ -69,16 +70,17 @@ class Popper:
             raise ValueError(f"Unknown loader_type: {loader_type}")
 
 
-    def configure(self, 
+    def configure(self,
                  alpha: float = 0.1,
                  aggregate_test: str = 'E-value',
                  max_num_of_tests: int = 5,
                  max_retry: int = 5,
                  time_limit: int = 2,
                  relevance_checker: bool = True,
-                 use_react_agent: bool = True):
+                 use_react_agent: bool = True,
+                 domain: str = "biology"):
         """Configure the sequential falsification test parameters.
-        
+
         Args:
             alpha (float): Significance level
             aggregate_test (str): Test aggregation method
@@ -87,10 +89,11 @@ class Popper:
             time_limit (int): Time limit in hours
             relevance_checker (bool): Whether to use relevance checker
             use_react_agent (bool): Whether to use ReAct agent
+            domain (str): Domain of the hypothesis (e.g. "biology", "sociology", "economics")
         """
         if self.data_loader is None:
             raise ValueError("Please register data first using register_data()")
-            
+
         self.agent = SequentialFalsificationTest(llm=self.llm, is_local=self.is_local, port=self.port, api_key=self.api_key)
         self.agent.configure(
             data=self.data_loader,
@@ -101,6 +104,7 @@ class Popper:
             time_limit=time_limit,
             relevance_checker=relevance_checker,
             use_react_agent=use_react_agent,
+            domain=domain,
             **self.kwargs
         )
 

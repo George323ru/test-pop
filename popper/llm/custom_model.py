@@ -153,7 +153,11 @@ def _convert_dict_to_message(_dict: Mapping[str, Any]) -> BaseMessage:
             additional_kwargs["tool_calls"] = raw_tool_calls
             for raw_tool_call in raw_tool_calls:
                 try:
-                    tool_calls.append(ToolCall(name=raw_tool_call['function']['name'], args=raw_tool_call['function']['arguments'], id=raw_tool_call['id'], type="tool_call"))
+                    args = raw_tool_call['function']['arguments']
+                    if isinstance(args, str):
+                        import json as _json
+                        args = _json.loads(args)
+                    tool_calls.append(ToolCall(name=raw_tool_call['function']['name'], args=args, id=raw_tool_call['id'], type="tool_call"))
                 except Exception as e:
                     invalid_tool_calls.append(
                         make_invalid_tool_call(str(raw_tool_call), str(e))

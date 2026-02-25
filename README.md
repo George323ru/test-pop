@@ -58,6 +58,24 @@ export OPENAI_API_KEY="YOUR_API_KEY"
 export ANTHROPIC_API_KEY="YOUR_API_KEY"
 ```
 
+### Using OpenRouter
+
+This fork adds support for [OpenRouter](https://openrouter.ai/) — a unified API gateway giving access to hundreds of models (Gemini, Claude, GPT-4o, Llama, Mistral, etc.) through a single endpoint and API key.
+
+Create a `.env` file in the project root:
+```
+OPENROUTER_API_KEY=sk-or-YOUR_KEY_HERE
+```
+
+Use any OpenRouter model by passing its full `provider/model` name (names containing `/` are automatically routed through OpenRouter):
+
+```python
+from popper import Popper
+
+agent = Popper(llm="google/gemini-2.5-pro-preview", api_key="sk-or-...")
+# or: anthropic/claude-3-5-sonnet, meta-llama/llama-3.3-70b-instruct, etc.
+```
+
 Datasets will be automatically downloaded to specified data folder when you run the code.
 
 ## Demo
@@ -70,10 +88,11 @@ A demo is provided in [here](demo.ipynb) to show how to use the Popper agent to 
 from popper import Popper
 
 # Initialize the Popper agent
+# Use any model: OpenAI, Anthropic, or OpenRouter (provider/model format)
 agent = Popper(llm="claude-3-5-sonnet-20240620")
 
-# Register data for hypothesis testing; 
-# for bio/discoverybench data in the paper, 
+# Register data for hypothesis testing;
+# for bio/discoverybench data in the paper,
 # it will be automatically downloaded to your specified data_path
 agent.register_data(data_path='path/to/data', loader_type='bio')
 
@@ -85,7 +104,8 @@ agent.configure(
     time_limit=2,
     aggregate_test='E-value',
     relevance_checker=True,
-    use_react_agent=True
+    use_react_agent=True,
+    domain='biology'       # hint for LLM prompts: biology, sociology, economics, etc.
 )
 
 # Validate a hypothesis
@@ -131,17 +151,50 @@ agent = Popper(llm="qwen2 1.5B", is_locally_served=True, server_port=8080)
 
 ## Run on your own hypothesis and database
 
-You can simply dump in a set of datasets in your domain (e.g. business, economics, political science, etc.) and run Popper on your own hypothesis. 
-We only expect every file is in a csv or pkl format.
+You can simply dump in a set of datasets in your domain (e.g. business, economics, political science, sociology, etc.) and run Popper on your own hypothesis.
+We only expect every file is in a CSV or PKL format.
 
 ```python
-from popper import Popper   
+from popper import Popper
 
-agent = Popper(llm="claude-3-5-sonnet-20240620")
-agent.configure(alpha = 0.1)
+agent = Popper(llm="google/gemini-2.5-pro-preview", api_key="sk-or-...")
 agent.register_data(data_path='path/to/data', loader_type='custom')
-agent.validate(hypothesis = 'YOUR HYPOTHESIS')
+agent.configure(
+    alpha=0.1,
+    max_num_of_tests=5,
+    domain='sociology'     # set to match your data domain
+)
+agent.validate(hypothesis='YOUR HYPOTHESIS')
 ```
+
+The `domain` parameter adjusts LLM prompts to the relevant field (e.g. `"sociology"`, `"economics"`, `"public health"`, `"psychology"`, `"political science"`). It defaults to `"biology"` for backward compatibility with the paper's benchmarks.
+
+## Web Interface
+
+A standalone Gradio web app (`web_app.py`) is included for interactive hypothesis testing through a browser — no coding required.
+
+**Features:**
+- Upload one or more CSV files (previewed as tables before running)
+- Enter a free-form hypothesis in plain language
+- Select the domain (sociology, biology, economics, psychology, political science, education, public health)
+- Adjust significance level (α) and maximum number of falsification tests
+- Stream the agent log in real time (Experiment Designer → Executor → Relevance Checker → Sequential Testing → Summarizer)
+- See the final verdict with reasoning
+
+**Quick start:**
+```bash
+# 1. Add OPENROUTER_API_KEY to .env
+echo "OPENROUTER_API_KEY=sk-or-..." > .env
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Launch
+python3 web_app.py
+# Open http://localhost:7860
+```
+
+[![web interface screenshot](https://img.youtube.com/vi/jYFEeP2mEY8/0.jpg)](https://www.youtube.com/watch?v=jYFEeP2mEY8)
 
 ## Hypothesis in Popper
 
@@ -199,8 +252,8 @@ Bash scripts for reproducing the paper is provided in the `benchmark_scripts/run
 python benchmark_scripts/run_discovery_bench.py --exp_name discovery_bench --model llama-3.3-70b --num_tests 5 --samples 100 --permute --e_value --react --relevance_checker --is_locally_served --server_port 30000 --path PATH_TO_YOUR_DATASET
 ```
 
-## UI interface
-You can deploy a simple UI interface with one line of code using your datasets or our bio dataset - a gradio UI will be generated and you can interact with it to validate your hypothesis. 
+## UI interface (built-in)
+You can deploy a simple UI interface with one line of code using your datasets or our bio dataset — a Gradio UI will be generated and you can interact with it to validate your hypothesis.
 
 ```python
 agent.launch_UI()

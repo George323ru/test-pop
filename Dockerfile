@@ -1,21 +1,19 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
+# Зависимости — отдельный слой для кеширования
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY benchmark_scripts /app/benchmark_scripts
-
+# Код приложения
 COPY popper /app/popper
+COPY web_app.py /app/web_app.py
 
-COPY baseline_agents /app/baseline_agents
-
-# Create directories for storing output and logs
+# Директории для данных и логов
 RUN mkdir -p /app/data /app/.logs && chmod -R 777 /app/data /app/.logs
 
-RUN useradd -m nonrootuser
-USER nonrootuser
+# Порт Gradio
+EXPOSE 7860
 
-ENTRYPOINT ["python"]
+CMD ["python", "web_app.py"]

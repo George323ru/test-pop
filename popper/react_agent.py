@@ -84,6 +84,8 @@ class ReactAgent():
             self.api = 'anthropic'
         elif model_name[:4] == 'gpt-':
             self.api = 'openai'
+        elif '/' in model_name:
+            self.api = 'openrouter'
         else:
             self.api = 'local'
         
@@ -132,13 +134,23 @@ class ReactAgent():
                 api_key=os.environ["OPENAI_API_KEY"],
                 **kwargs
             )
-        # elif (api == 'llama'):
-        #     llm = CustomChatModel(
-        #         model=model,
-        #         model_type='custom',
-        #         **kwargs
-        #     )
-        #     llm.client = openai.Client(base_url="http://127.0.0.1:30000/v1", api_key="EMPTY").chat.completions
+        elif api == "openrouter":
+            openrouter_api_key = api_key if (api_key and api_key != "EMPTY") else os.environ.get("OPENROUTER_API_KEY", "EMPTY")
+            extra_body = {}
+            if 'gemini' in model.lower():
+                extra_body["reasoning"] = {"enabled": True}
+            llm = CustomChatModel(
+                model=model,
+                model_type='openrouter',
+                openai_api_base="https://openrouter.ai/api/v1",
+                openai_api_key=openrouter_api_key,
+                extra_body=extra_body if extra_body else None,
+                **kwargs
+            )
+            llm.client = openai.Client(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=openrouter_api_key,
+            ).chat.completions
         else:
             # Llama or other locally-served models
             assert port is not None, "Port must be specified for local models"

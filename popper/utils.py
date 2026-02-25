@@ -14,12 +14,17 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages.base import get_msg_title_repr
 from langchain_core.utils.interactive_env import is_interactive_env
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 def get_llm(model = 'claude-3-5-sonnet-20240620', temperature=0.7, port=30000, api_key = "EMPTY", **kwargs):
     source = "Local"
     if model[:7] == 'claude-':
         source = 'Anthropic'
     elif model[:4] == 'gpt-' or model.startswith("o1"):
         source = 'OpenAI'
+    elif '/' in model:
+        # OpenRouter model format: "provider/model-name" (e.g. "google/gemini-3-flash-preview")
+        source = 'OpenRouter'
     # elif model.startswith('llama'):
     #     source = "Llama"
     # if source not in ['OpenAI', 'Anthropic']:
@@ -29,10 +34,28 @@ def get_llm(model = 'claude-3-5-sonnet-20240620', temperature=0.7, port=30000, a
             return ChatOpenAI(model = model, temperature = -1, **kwargs)
         return ChatOpenAI(model = model, temperature = temperature, **kwargs)
     elif source == 'Anthropic':
-        return ChatAnthropic(model = model, 
+        return ChatAnthropic(model = model,
                             temperature = temperature,
                             max_tokens = 4096,
                             **kwargs)
+    elif source == 'OpenRouter':
+        openrouter_api_key = api_key if api_key != "EMPTY" else os.environ.get("OPENROUTER_API_KEY", "EMPTY")
+        extra_body = {}
+        if 'gemini' in model.lower():
+            extra_body["reasoning"] = {"enabled": True}
+        llm = CustomChatModel(
+            model=model,
+            model_type='openrouter',
+            temperature=temperature,
+            openai_api_base=OPENROUTER_BASE_URL,
+            openai_api_key=openrouter_api_key,
+            extra_body=extra_body if extra_body else None,
+        )
+        llm.client = openai.Client(
+            base_url=OPENROUTER_BASE_URL,
+            api_key=openrouter_api_key,
+        ).chat.completions
+        return llm
     else:
         # assuming a locally-served model
         assert port is not None, f"Model {model} is not supported, please provide a local port if it is a locally-served model."
