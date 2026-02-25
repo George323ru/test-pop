@@ -14,3 +14,4 @@ langgraph==0.2.39
 langchain_experimental==0.3.3
 ipython
 python-dotenv
+tabulate
