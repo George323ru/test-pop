@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import asyncio
 import copy
+import time
 
 import gradio as gr
 try:
@@ -75,10 +76,19 @@ async def validate_hypothesis(
         )
 
         prev_log = copy.deepcopy(agent.agent.log)
+        start_time = time.time()
 
         task = asyncio.create_task(
             asyncio.to_thread(agent.agent.go, hypothesis)
         )
+
+        stage_names = {
+            "designer": "Разработка эксперимента",
+            "executor": "Выполнение теста",
+            "relevance_checker": "Проверка релевантности",
+            "sequential_testing": "Агрегация результатов",
+            "summarizer": "Формирование вердикта",
+        }
 
         def log_to_messages(log):
             msgs = []
@@ -97,11 +107,24 @@ async def validate_hypothesis(
                         msgs.append({"role": "assistant", "content": f"**[{label}]**\n\n{entry}"})
             return msgs
 
+        def get_current_stage(log):
+            for key in reversed(["designer", "executor", "relevance_checker", "sequential_testing", "summarizer"]):
+                if log.get(key):
+                    return stage_names.get(key, key)
+            return "Запуск агента"
+
         while not task.done():
             await asyncio.sleep(1)
+            elapsed = int(time.time() - start_time)
+            minutes, seconds = divmod(elapsed, 60)
+            time_str = f"{minutes} мин {seconds} сек" if minutes else f"{seconds} сек"
+            current_stage = get_current_stage(agent.agent.log)
+            status = f"⏳ **Идёт проверка...** ({time_str})\n\n"
+            status += f"📍 Этап: {current_stage}\n\n"
+            status += f"_Проверка может занять от 5 до 30 минут в зависимости от кол-ва тестов._"
             if agent.agent.log != prev_log:
                 prev_log = copy.deepcopy(agent.agent.log)
-                yield log_to_messages(prev_log), ""
+            yield log_to_messages(prev_log), status
 
         result = await task
         log, last_message, parsed_result = result
