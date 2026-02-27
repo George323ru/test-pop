@@ -136,15 +136,13 @@ class ReactAgent():
             )
         elif api == "openrouter":
             openrouter_api_key = api_key if (api_key and api_key != "EMPTY") else os.environ.get("OPENROUTER_API_KEY", "EMPTY")
-            extra_body = {}
-            if 'gemini' in model.lower():
-                extra_body["reasoning"] = {"enabled": True}
+            extra_body = {"reasoning": {"enabled": True}}
             llm = CustomChatModel(
                 model=model,
                 model_type='openrouter',
                 openai_api_base="https://openrouter.ai/api/v1",
                 openai_api_key=openrouter_api_key,
-                extra_body=extra_body if extra_body else None,
+                extra_body=extra_body,
                 **kwargs
             )
             llm.client = openai.Client(

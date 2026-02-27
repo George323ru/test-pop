@@ -40,16 +40,14 @@ def get_llm(model = 'claude-3-5-sonnet-20240620', temperature=0.7, port=30000, a
                             **kwargs)
     elif source == 'OpenRouter':
         openrouter_api_key = api_key if api_key != "EMPTY" else os.environ.get("OPENROUTER_API_KEY", "EMPTY")
-        extra_body = {}
-        if 'gemini' in model.lower():
-            extra_body["reasoning"] = {"enabled": True}
+        extra_body = {"reasoning": {"enabled": True}}
         llm = CustomChatModel(
             model=model,
             model_type='openrouter',
             temperature=temperature,
             openai_api_base=OPENROUTER_BASE_URL,
             openai_api_key=openrouter_api_key,
-            extra_body=extra_body if extra_body else None,
+            extra_body=extra_body,
         )
         llm.client = openai.Client(
             base_url=OPENROUTER_BASE_URL,

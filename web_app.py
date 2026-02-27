@@ -22,7 +22,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from popper import Popper
 
-MODEL = "google/gemini-3-flash-preview"
+MODEL = "deepseek/deepseek-v3.2"
 
 HOW_TO_USE = """
 ### Как пользоваться

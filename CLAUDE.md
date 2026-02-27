@@ -64,7 +64,7 @@ Popper.validate(hypothesis)
 Определяется по префиксу имени модели:
 - `claude-*` → Anthropic API
 - `gpt-*` / `o1*` → OpenAI API
-- `*/` (содержит `/`) → **OpenRouter** (добавлено в этом репо; `base_url=https://openrouter.ai/api/v1`)
+- `*/` (содержит `/`) → **OpenRouter** (добавлено в этом репо; `base_url=https://openrouter.ai/api/v1`; текущая модель: `deepseek/deepseek-v3.2`, reasoning включён для всех OpenRouter-моделей)
 - иначе → локальная модель (требует `port`)
 
 ### Внесённые изменения (не из оригинального репо)
